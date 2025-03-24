@@ -16,7 +16,7 @@ import tfs
 from pymadng import MAD
 
 from .config import DATA_DIR
-from .model import initialise_model
+from .model import start_madng
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ def run_tracking(beam: int, nturns: int, kick_amp: float = 1e-3) -> tfs.TfsDataF
     """
     with MAD() as mad:
         # Initialize the model in MAD‐NG.
-        initialise_model(mad, beam)
+        start_madng(mad, beam)
 
         # Run the tracking simulation. The tracking command in MAD‐NG uses the "track" command.
         mad.send(f"""

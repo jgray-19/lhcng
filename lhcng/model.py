@@ -36,6 +36,7 @@ def get_model_dir(beam: int) -> Path:
 def create_model_dir(
     beam: int,
     *,
+    coupling_knob: bool | float = False,
     optics_type: str = "nominal",
     year: str = "2024",
     driven_excitation: str = "acd",
@@ -49,7 +50,31 @@ def create_model_dir(
     """
     Create and initialise the accelerator model for the given beam.
 
-    Parameters are customizable, but default to values used for LHC 2024 studies.
+    This routine generates the MAD-X sequence file, updates the model with MAD-NG,
+    and generates the beam4 sequence for tracking if beam 2.
+
+    Parameters
+    ----------
+    beam : int
+        Beam number (1 or 2).
+    coupling_knob : bool | float, optional
+        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
+    optics_type : str, optional
+        Optics type (default is "nominal").
+    year : str, optional
+        Year of the optics (default is "2024").
+    driven_excitation : str, optional
+        Driven excitation type (default is "acd").
+    energy : float, optional
+        Beam energy in GeV (default is 6800.0 GeV).
+    nat_tunes : list[float], optional
+        Natural tunes (default is [0.28, 0.31]).
+    drv_tunes : list[float] | None, optional
+        Driven tunes (default is None, i.e. use natural tunes).
+    modifiers : Path | list[Path], optional
+        Path to the MAD-X modifiers file or list of modifiers (default is the nominal optics file).
+    **kwargs
+        Additional keyword arguments to pass to the omc3.create_instance_and_model function.
     """
     model_dir = get_model_dir(beam)
 
@@ -80,16 +105,20 @@ def create_model_dir(
         lines = f.readlines()
 
     # Generate the MAD-X sequence and update with MAD-NG
-    make_madx_seq(model_dir, lines, beam)
+    make_madx_seq(model_dir, lines, beam, coupling_knob)
     update_model_with_ng(beam)
 
     # Generate beam4 sequence for tracking if beam 2
     if beam == 2:
-        make_madx_seq(model_dir, lines, beam, beam4=True)
+        make_madx_seq(beam, model_dir, lines, coupling_knob, beam4=True)
 
 
 def make_madx_seq(
-    model_dir: Path, lines: list[str], beam: int, beam4: bool = False
+    beam: int,
+    model_dir: Path,
+    lines: list[str],
+    coupling_knob: bool | float,
+    beam4: bool = False,
 ) -> None:
     """
     Generate the MAD-X sequence file for the given beam.
@@ -110,8 +139,11 @@ def make_madx_seq(
                         "acc-models-lhc/lhc.seq", "acc-models-lhc/lhcb4.seq"
                     )
             # Process only the first 32 lines (as in the original workflow)
-            if i < 32:
+            if "coupling_knob" in line:
                 madx.input(line)
+                if coupling_knob is not False:
+                    madx.input(f"cmrs.b{beam} = {coupling_knob};")
+                break
         madx.input(
             f"""
 set, format= "-.16e";
@@ -145,7 +177,7 @@ def update_model_with_ng(beam: int) -> None:
     model_dir = get_model_dir(beam)
     with MAD() as mad:
         seq_dir = -1 if beam == 2 else 1
-        initialise_model(mad, beam, seq_dir=seq_dir)
+        start_madng(mad, beam, sequence_direction=seq_dir)
         mad.send(f"""
 -- Set the twiss table information needed for the model update
 hnams = py:recv()
@@ -191,7 +223,12 @@ py:send("write complete")
     export_tfs_to_madx(model_dir / "twiss.dat")
 
 
-def initialise_model(mad: MAD, beam: int, seq_dir: int = 1) -> None:
+def start_madng(
+        mad: MAD, 
+        beam: int,
+        *, 
+        sequence_direction: int = 1
+    ) -> None:
     """
     Initialise the accelerator model within MAD-NG.
 
@@ -205,10 +242,10 @@ def initialise_model(mad: MAD, beam: int, seq_dir: int = 1) -> None:
     mad.send(f"""
 lhc_beam = beam {{particle="proton", energy=450}};
 MADX.lhcb{beam}.beam = lhc_beam;
-MADX.lhcb{beam}.dir = {seq_dir};
+MADX.lhcb{beam}.dir = {sequence_direction};
 print("Initialising model with beam:", {beam}, "direction:", MADX.lhcb{beam}.dir);
     """)
-    if seq_dir == 1 and beam == 1:
+    if sequence_direction == 1 and beam == 1:
         mad.send('MADX.lhcb1:cycle("MSIA.EXIT.B1")')
     match_tunes(mad, beam)
 
