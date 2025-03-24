@@ -7,8 +7,8 @@ including directory paths, accelerator model settings, and RDT definitions for
 MAD-NG operations with the LHC.
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 # BASE DIRECTORY now set to the directory of the importing file
 CURRENT_DIR = Path(os.getcwd()).resolve()

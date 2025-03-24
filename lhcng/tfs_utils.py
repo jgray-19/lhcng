@@ -10,24 +10,26 @@ Includes functions to:
 """
 
 from pathlib import Path
+
 import tfs
+
 
 def convert_tfs_to_madx(tfs_df: tfs.TfsDataFrame) -> tfs.TfsDataFrame:
     """
     Convert the TFS DataFrame to a format compatible with MAD-X.
-    
+
     This function performs the following steps:
       - Converts all column names and header keys to uppercase.
       - Renames the columns 'MU1' and 'MU2' to 'MUX' and 'MUY', respectively.
       - Renames drift element names to consecutive values starting at 'DRIFT_0'.
       - Removes rows containing 'vkicker' or 'hkicker' in the 'KIND' column.
       - Sets the 'NAME' column as the index and removes rows with '$start' or '$end'.
-    
+
     Parameters
     ----------
     tfs_df : tfs.TfsDataFrame
         The input TFS DataFrame.
-    
+
     Returns
     -------
     tfs.TfsDataFrame
@@ -58,15 +60,15 @@ def convert_tfs_to_madx(tfs_df: tfs.TfsDataFrame) -> tfs.TfsDataFrame:
 def filter_out_BPM_near_IPs(df: tfs.TfsDataFrame) -> tfs.TfsDataFrame:
     """
     Filter the TFS DataFrame to include only BPM rows.
-    
+
     Uses a regex filter to select only those rows whose index (NAME)
     starts with 'BPM.' followed by a number.
-    
+
     Parameters
     ----------
     df : tfs.TfsDataFrame
         The input TFS DataFrame.
-    
+
     Returns
     -------
     tfs.TfsDataFrame
@@ -78,10 +80,10 @@ def filter_out_BPM_near_IPs(df: tfs.TfsDataFrame) -> tfs.TfsDataFrame:
 def export_tfs_to_madx(tfs_file: Path) -> None:
     """
     Read a TFS file, convert its contents to MAD-X format, and write it back.
-    
+
     This function uses the `convert_tfs_to_madx` function to adjust the TFS file
     for compatibility with MAD-X and then writes the converted DataFrame back to disk.
-    
+
     Parameters
     ----------
     tfs_file : Path

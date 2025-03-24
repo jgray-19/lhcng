@@ -18,8 +18,8 @@ from pathlib import Path
 import tfs
 from pymadng import MAD
 
-from .model import initialise_model
 from .config import DATA_DIR, FREQ_OUT_DIR
+from .model import initialise_model
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +27,14 @@ logger = logging.getLogger(__name__)
 def get_file_suffix(beam: int, nturns: int) -> str:
     """
     Return a file suffix based on the beam number and number of turns.
-    
+
     Parameters
     ----------
     beam : int
         Beam number (1 or 2).
     nturns : int
         Number of turns.
-        
+
     Returns
     -------
     str
@@ -47,14 +47,14 @@ def get_file_suffix(beam: int, nturns: int) -> str:
 def get_tfs_path(beam: int, nturns: int) -> Path:
     """
     Return the path for the TFS file for given beam and number of turns.
-    
+
     Parameters
     ----------
     beam : int
         Beam number.
     nturns : int
         Number of turns.
-        
+
     Returns
     -------
     Path
@@ -66,7 +66,7 @@ def get_tfs_path(beam: int, nturns: int) -> Path:
 def get_tbt_path(beam: int, nturns: int, index: int | str) -> Path:
     """
     Return the path for the TBT file for given beam, number of turns, and index.
-    
+
     Parameters
     ----------
     beam : int
@@ -75,7 +75,7 @@ def get_tbt_path(beam: int, nturns: int, index: int | str) -> Path:
         Number of turns.
     index : int
         Index for the file (if multiple TBT files are generated).
-        
+
     Returns
     -------
     Path
@@ -88,14 +88,14 @@ def get_tbt_path(beam: int, nturns: int, index: int | str) -> Path:
 def get_tbt_name(beam: int, sdds: bool = True) -> str:
     """
     Return the TBT filename for the given beam.
-    
+
     Parameters
     ----------
     beam : int
         Beam number.
     sdds : bool, optional
         If True, use "sdds" extension, otherwise "tfs.bz2".
-        
+
     Returns
     -------
     str
@@ -103,6 +103,7 @@ def get_tbt_name(beam: int, sdds: bool = True) -> str:
     """
     ext = "sdds" if sdds else "tfs.bz2"
     return f"tbt_data_b{beam}.{ext}"
+
 
 def run_tracking(beam: int, nturns: int, kick_amp: float = 1e-3) -> tfs.TfsDataFrame:
     """
@@ -156,47 +157,3 @@ print("Tracking runtime:", os.clock() - t0);
         df = mad.mtbl.to_df(columns=["name", "x", "y", "eidx", "turn", "id"])
         logger.info(f"Tracking complete for beam {beam} over {nturns} turns.")
     return df
-
-
-def run_harpy(
-    beam: int,
-    tunes: list[float] = [0.28, 0.31, 0.0],
-    natdeltas: list[float] = [0.0, -0.0, 0.0],
-    linfile_dir: Path = None,
-    clean: bool = False,
-) -> None:
-    """
-    Run Harpy frequency analysis on the Turn-by-Turn (TBT) file for the given beam.
-
-    This function constructs the TBT file path and then calls the OMC3 Harpy entrypoint
-    to generate frequency analysis outputs. Optionally, it can use SVD cleaning to remove
-    noise from the data.
-
-    Parameters
-    ----------
-    beam : int
-        The beam number (1 or 2).
-    linfile_dir : Path, optional
-        Directory containing the linear output files. Defaults to FREQ_OUT_DIR.
-    clean : bool, optional
-        If True, perform SVD cleaning on the data (default is False).
-    """
-    from omc3.hole_in_one import hole_in_one_entrypoint
-
-    if linfile_dir is None:
-        linfile_dir = FREQ_OUT_DIR
-
-    # Construct the TBT file path (assuming naming convention from config).
-    tbt_file = DATA_DIR / f"tbt_data_b{beam}.sdds"
-
-    hole_in_one_entrypoint(
-        harpy=True,
-        files=[tbt_file],
-        outputdir=linfile_dir,
-        to_write=["lin", "spectra"],
-        opposite_direction=(beam == 2),
-        tunes=tunes,
-        natdeltas=natdeltas,
-        clean=clean,
-    )
-    logger.info(f"Harpy analysis complete for beam {beam}.")

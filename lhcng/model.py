@@ -13,10 +13,9 @@ from cpymad.madx import Madx
 from omc3.model_creator import create_instance_and_model
 from pymadng import MAD
 
-from .tfs_utils import export_tfs_to_madx
-from .model_constants import MODEL_HEADER, MODEL_COLUMNS, MODEL_STRENGTHS
-
 from .config import ACC_MODELS, CURRENT_DIR
+from .model_constants import MODEL_COLUMNS, MODEL_HEADER, MODEL_STRENGTHS
+from .tfs_utils import export_tfs_to_madx
 
 # Define the MADX job filename (as created by the model_creator)
 MADX_FILENAME = "job.create_model_nominal.madx"
@@ -119,6 +118,7 @@ set, format= "-.16e";
 save, sequence=lhcb{beam}, file="lhcb{beam}_saved.seq", noexpr=false;
             """
         )
+
 
 def add_strengths_to_twiss(mad: MAD, mtable_name: str) -> None:
     mad.send(f"""
