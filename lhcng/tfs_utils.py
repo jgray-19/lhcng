@@ -4,7 +4,7 @@ tfs_utils.py
 
 Utility functions for processing TFS files to be used with MAD-NG.
 Includes functions to:
-- Convert TFS data (headers and columns) to a MAD-X–friendly format.
+- Convert TFS data (headers and columns) to a MAD-X friendly format.
 - Filter the TFS DataFrame to include only BPM data.
 - Read, convert, and export a TFS file.
 """

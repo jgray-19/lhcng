@@ -19,6 +19,7 @@ from omc3.hole_in_one import hole_in_one_entrypoint
 
 from .config import ALL_RDTS, ANALYSIS_DIR, DATA_DIR, FREQ_OUT_DIR
 from .model import get_model_dir
+from .model_compressor import ModelCompressor
 from .tfs_utils import filter_out_BPM_near_IPs
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,7 @@ def get_tunes(output_dir: Path) -> list[float]:
 def get_rdts_from_optics_analysis(
     beam: int,
     tbt_path: Path,
+    model_dir: Path,
     output_dir: Path = None,
 ) -> dict[str, tfs.TfsDataFrame]:
     """
@@ -159,18 +161,19 @@ def get_rdts_from_optics_analysis(
     rdt_paths = get_rdt_paths(rdts, output_dir)
 
     # Run optics analysis using omc3's hole_in_one_entrypoint.
-    hole_in_one_entrypoint(
-        files=[FREQ_OUT_DIR / tbt_path.name],
-        outputdir=output_dir,
-        optics=True,
-        accel="lhc",
-        beam=beam,
-        model_dir=get_model_dir(beam),
-        only_coupling=only_coupling,
-        compensation="none",
-        nonlinear=["rdt"],
-        rdt_magnet_order=rdt_order,
-    )
+    with ModelCompressor(model_dir):
+        hole_in_one_entrypoint(
+            files=[FREQ_OUT_DIR / tbt_path.name],
+            outputdir=output_dir,
+            optics=True,
+            accel="lhc",
+            beam=beam,
+            model_dir=get_model_dir(beam),
+            only_coupling=only_coupling,
+            compensation="none",
+            nonlinear=["rdt"],
+            rdt_magnet_order=rdt_order,
+        )
 
     tunes = get_tunes(output_dir)
     logger.info(f"Tunes for beam {beam}: {tunes}")
@@ -185,6 +188,7 @@ def get_rdts_from_optics_analysis(
 
 def run_harpy(
     beam: int,
+    model_dir: Path,
     tunes: list[float] = [0.28, 0.31, 0.0],
     natdeltas: list[float] = [0.0, -0.0, 0.0],
     linfile_dir: Path = None,
@@ -214,14 +218,16 @@ def run_harpy(
     # Construct the TBT file path (assuming naming convention from config).
     tbt_file = DATA_DIR / f"tbt_data_b{beam}.sdds"
 
-    hole_in_one_entrypoint(
-        harpy=True,
-        files=[tbt_file],
-        outputdir=linfile_dir,
-        to_write=["lin", "spectra"],
-        opposite_direction=(beam == 2),
-        tunes=tunes,
-        natdeltas=natdeltas,
-        clean=clean,
-    )
-    logger.info(f"Harpy analysis complete for beam {beam}.")
+    with ModelCompressor(model_dir):
+        hole_in_one_entrypoint(
+            harpy=True,
+            files=[tbt_file],
+            outputdir=linfile_dir,
+            to_write=["lin", "spectra"],
+            opposite_direction=(beam == 2),
+            tunes=tunes,
+            natdeltas=natdeltas,
+            clean=clean,
+        )
+        logger.info(f"Harpy analysis complete for beam {beam}.")
+

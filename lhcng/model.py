@@ -16,19 +16,60 @@ from pymadng import MAD
 from .config import ACC_MODELS, CURRENT_DIR
 from .model_constants import MODEL_COLUMNS, MODEL_HEADER, MODEL_STRENGTHS
 from .tfs_utils import export_tfs_to_madx
+from .model_compressor import ModelCompressor
 
 # Define the MADX job filename (as created by the model_creator)
 MADX_FILENAME = "job.create_model_nominal.madx"
 
 
-def get_model_dir(beam: int) -> Path:
+def get_folder_suffix(
+    beam: int,
+    coupling_knob: bool | float = False,
+    tunes: list[float] = [0.28, 0.31],
+) -> str:
+    """
+    Return a file suffix based on the beam number and number of turns.
+
+    Parameters
+    ----------
+    beam : int
+        Beam number (1 or 2).
+    coupling_knob : bool | float, optional
+        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
+    tunes : list[float], optional
+        Natural tunes (default is [0.28, 0.31]).
+
+    Returns
+    -------
+    str
+        Suffix in the format "b<beam>_<nturns>t_c<coupling>_t<tune1>_<tune2>".
+    """
+    assert beam in [1, 2], "Beam must be 1 or 2"
+    coupling = "_"
+    if coupling_knob is not False:
+        coupling += f"c{coupling_knob}"
+
+    tunes = f"t{tunes[0]}_{tunes[1]}"
+    return f"b{beam}_{coupling}_{tunes}"
+
+
+def get_model_dir(
+    beam: int, coupling_knob: bool | float = False, tunes: list[float] = [0.28, 0.31]
+) -> Path:
     """
     Return the model directory for the given beam.
 
-    For example, for beam 1 this returns <CURRENT_DIR>/model_b1.
+    Parameters
+    ----------
+    beam : int
+        Beam number (1 or 2).
+    coupling_knob : bool | float, optional
+        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
+    tunes : list[float], optional
+        Natural tunes (default is [0.28, 0.31]).
     """
     assert beam in [1, 2], "Beam must be 1 or 2"
-    model_dir = CURRENT_DIR / f"model_b{beam}"
+    model_dir = CURRENT_DIR / ("model_" + get_folder_suffix(beam, coupling_knob, tunes))
     model_dir.mkdir(exist_ok=True)
     return model_dir
 
@@ -105,13 +146,14 @@ def create_model_dir(
         lines = f.readlines()
 
     # Generate the MAD-X sequence and update with MAD-NG
-    make_madx_seq(model_dir, lines, beam, coupling_knob)
+    make_madx_seq(beam, model_dir, lines, coupling_knob)
     update_model_with_ng(beam)
 
     # Generate beam4 sequence for tracking if beam 2
     if beam == 2:
         make_madx_seq(beam, model_dir, lines, coupling_knob, beam4=True)
 
+    ModelCompressor.compress_model_folder(model_dir)
 
 def make_madx_seq(
     beam: int,
@@ -138,12 +180,15 @@ def make_madx_seq(
                     line = line.replace(
                         "acc-models-lhc/lhc.seq", "acc-models-lhc/lhcb4.seq"
                     )
-            # Process only the first 32 lines (as in the original workflow)
             if "coupling_knob" in line:
+                print(f"Setting coupling knob to {coupling_knob}")
+                print(line)
                 madx.input(line)
                 if coupling_knob is not False:
                     madx.input(f"cmrs.b{beam} = {coupling_knob};")
-                break
+                break  # The coupling knob is the last line to be read
+
+            madx.input(line)
         madx.input(
             f"""
 set, format= "-.16e";
@@ -215,7 +260,7 @@ twiss_data:write("{model_dir / "twiss.dat"}", cols, hnams)
 print("Replaced twiss data tables")
 py:send("write complete")
 """)
-    assert mad.receive() == "write complete", "Error in writing twiss tables"
+        assert mad.receive() == "write complete", "Error in writing twiss tables"
 
     # Read the twiss data tables and then convert all the headers to uppercase and column names to uppercase
     export_tfs_to_madx(model_dir / "twiss_ac.dat")
@@ -223,12 +268,7 @@ py:send("write complete")
     export_tfs_to_madx(model_dir / "twiss.dat")
 
 
-def start_madng(
-        mad: MAD, 
-        beam: int,
-        *, 
-        sequence_direction: int = 1
-    ) -> None:
+def start_madng(mad: MAD, beam: int, *, sequence_direction: int = 1) -> None:
     """
     Initialise the accelerator model within MAD-NG.
 

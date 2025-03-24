@@ -16,12 +16,17 @@ import tfs
 from pymadng import MAD
 
 from .config import DATA_DIR
-from .model import start_madng
+from .model import start_madng, get_folder_suffix
 
 logger = logging.getLogger(__name__)
 
 
-def get_file_suffix(beam: int, nturns: int) -> str:
+def get_file_suffix(
+    beam: int,
+    nturns: int,
+    coupling_knob: bool | float = False,
+    tunes: list[float] = [0.28, 0.31],
+) -> str:
     """
     Return a file suffix based on the beam number and number of turns.
 
@@ -31,17 +36,26 @@ def get_file_suffix(beam: int, nturns: int) -> str:
         Beam number (1 or 2).
     nturns : int
         Number of turns.
+    coupling_knob : bool | float, optional
+        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
+    tunes : list[float], optional
+        Natural tunes (default is [0.28, 0.31]).
 
     Returns
     -------
     str
-        Suffix in the format "b<beam>_<nturns>t".
+        Suffix in the format "b<beam>_c<coupling>_t<tune1>_<tune2>_<nturns>t".
     """
     assert beam in [1, 2], "Beam must be 1 or 2"
-    return f"b{beam}_{nturns}t"
+    return get_folder_suffix(beam, coupling_knob, tunes) + f"_{nturns}t"
 
 
-def get_tfs_path(beam: int, nturns: int) -> Path:
+def get_tfs_path(
+    beam: int,
+    nturns: int,
+    coupling_knob: bool | float = False,
+    tunes: list[float] = [0.28, 0.31],
+) -> Path:
     """
     Return the path for the TFS file for given beam and number of turns.
 
@@ -51,16 +65,26 @@ def get_tfs_path(beam: int, nturns: int) -> Path:
         Beam number.
     nturns : int
         Number of turns.
+    coupling_knob : bool | float, optional
+        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
+    tunes : list[float], optional
+        Natural tunes (default is [0.28, 0.31]).
 
     Returns
     -------
     Path
         Path to the TFS file.
     """
-    return DATA_DIR / f"{get_file_suffix(beam, nturns)}.tfs.bz2"
+    return DATA_DIR / f"{get_file_suffix(beam, nturns, coupling_knob, tunes)}.tfs.bz2"
 
 
-def get_tbt_path(beam: int, nturns: int, index: int | str) -> Path:
+def get_tbt_path(
+    beam: int,
+    nturns: int,
+    coupling_knob: bool | float = False,
+    tunes: list[float] = [0.28, 0.31],
+    index: int | str = 0,
+) -> Path:
     """
     Return the path for the TBT file for given beam, number of turns, and index.
 
@@ -70,15 +94,19 @@ def get_tbt_path(beam: int, nturns: int, index: int | str) -> Path:
         Beam number.
     nturns : int
         Number of turns.
+    coupling_knob : bool | float, optional
+        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
+    tunes : list[float], optional
+        Natural tunes (default is [0.28, 0.31]).
     index : int
-        Index for the file (if multiple TBT files are generated).
+        Index for the file (if multiple TBT files are generated) (default is 0).
 
     Returns
     -------
     Path
         Path to the TBT file.
     """
-    suffix = get_file_suffix(beam, nturns) + f"_{index}"
+    suffix = get_file_suffix(beam, nturns, coupling_knob, tunes) + f"_{index}"
     return DATA_DIR / f"tbt_{suffix}.sdds"
 
 

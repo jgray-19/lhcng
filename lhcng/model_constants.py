@@ -29,9 +29,6 @@ MODEL_HEADER = [
     "dq1",
     "dq2",
     "dq3",
-    "alfap",
-    "etap",
-    "gammatr",
 ]
 
 MODEL_COLUMNS = [
@@ -44,12 +41,6 @@ MODEL_COLUMNS = [
     "alfy",
     "mu1",
     "mu2",
-    "r11",
-    "r12",
-    "r21",
-    "r22",
-    "x",
-    "y",
     "dx",
     "dpx",
     "dy",
