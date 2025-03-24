@@ -4,12 +4,9 @@ tracking.py
 
 This module provides functions to run tracking simulations for the LHC using MAD‐NG.
 It includes routines to:
-  - Run a tracking simulation over a specified number of turns.
-  - Execute Harpy frequency analysis on the tracking data.
-
-Functions:
-    run_tracking(beam: int, nturns: int, kick_amp: float = 1e-3) -> tfs.TfsDataFrame
-    run_harpy(beam: int, linfile_dir: Path = None, clean: bool = False) -> None
+    - Return file paths for TFS and TBT files.
+    - Run a tracking simulation over a specified number of turns.
+    - Generate TFS and SDDS files for tracking data.
 """
 
 import logging
@@ -18,7 +15,7 @@ from pathlib import Path
 import tfs
 from pymadng import MAD
 
-from .config import DATA_DIR, FREQ_OUT_DIR
+from .config import DATA_DIR
 from .model import initialise_model
 
 logger = logging.getLogger(__name__)

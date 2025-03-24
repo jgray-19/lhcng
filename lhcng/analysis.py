@@ -4,10 +4,8 @@ optics.py
 
 This module contains functions for performing optics analysis for the LHC
 using MAD-NG. It provides routines to:
-  - Generate TFS and TBT file names.
-  - Determine RDT types and their output file paths.
-  - Extract tunes from optics analysis files.
-  - Run an optics analysis to extract RDTs.
+    - Extract RDTs from a Turn-by-Turn (TBT) file.
+    - Run Harpy frequency analysis on the TBT data.
 
 The analysis is based on TFS file handling via the tfs package and the
 omc3.hole_in_one entrypoint.
