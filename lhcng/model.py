@@ -147,7 +147,7 @@ def create_model_dir(
 
     # Generate the MAD-X sequence and update with MAD-NG
     make_madx_seq(beam, model_dir, lines, coupling_knob)
-    update_model_with_ng(beam, tunes=nat_tunes)
+    update_model_with_ng(beam, model_dir, tunes=nat_tunes)
 
     # Generate beam4 sequence for tracking if beam 2
     if beam == 2:
@@ -212,17 +212,16 @@ MADX.lhcb{beam}:  select(observed, {{pattern="BPM"}})
     """)
 
 
-def update_model_with_ng(beam: int, tunes: list[float] = [0.28, 0.31]) -> None:
+def update_model_with_ng(beam: int, model_dir: Path, tunes: list[float] = [0.28, 0.31]) -> None:
     """
     Update the accelerator model with MAD-NG and perform tune matching.
 
     This routine loads the saved sequence into MAD-NG, initialises the beam parameters,
     and then calls the tune matching routine.
     """
-    model_dir = get_model_dir(beam)
     with MAD() as mad:
         seq_dir = -1 if beam == 2 else 1
-        start_madng(mad, beam, tunes=tunes, sequence_direction=seq_dir)
+        start_madng(mad, beam, model_dir, tunes=tunes, sequence_direction=seq_dir)
         mad.send(f"""
 -- Set the twiss table information needed for the model update
 hnams = py:recv()
@@ -271,6 +270,7 @@ py:send("write complete")
 def start_madng(
     mad: MAD,
     beam: int,
+    model_dir: Path,
     *,
     tunes: list[float] = [0.28, 0.31],
     sequence_direction: int = 1,
@@ -280,7 +280,6 @@ def start_madng(
 
     Loads the saved sequence and sets the beam parameters.
     """
-    model_dir = get_model_dir(beam)
     saved_seq = model_dir / f"lhcb{beam}_saved.seq"
     saved_mad = model_dir / f"lhcb{beam}_saved.mad"
 
@@ -313,10 +312,9 @@ def match_tunes(mad: MAD, beam: int, tunes: list[float] = [0.28, 0.31]) -> None:
     The target tunes are hardcoded (62.28 and 60.31 in absolute value) and the routine
     uses a matching command to adjust the optics accordingly.
     """
-    sdir = 1 if beam == 1 else -1
+    sdir = 1
     q1, q2 = _print_tunes(mad, beam, sdir, "Initial")
-    print(tunes, q1, q2)
-    if abs(tunes[0] - q1) < 1e-6 and abs(tunes[1] - q2) < 1e-6:
+    if abs(tunes[0] - q1 % 1) < 1e-6 and abs(tunes[1] - q2 % 1) < 1e-6:
         print("Tunes already matched, skipping matching.")
         return
     mad.send(f"""

@@ -132,6 +132,7 @@ def get_tbt_name(beam: int, sdds: bool = True) -> str:
 
 def run_tracking(beam: int, 
                  nturns: int, 
+                 model_dir: Path,
                  tunes: list[float] = [0.28, 0.31],
                  kick_amp: float = 1e-3
                  ) -> tfs.TfsDataFrame:
@@ -161,7 +162,7 @@ def run_tracking(beam: int,
     """
     with MAD() as mad:
         # Initialize the model in MAD‐NG.
-        start_madng(mad, beam, tunes=tunes)
+        start_madng(mad, beam, model_dir, tunes=tunes)
 
         # Run the tracking simulation. The tracking command in MAD‐NG uses the "track" command.
         mad.send(f"""
