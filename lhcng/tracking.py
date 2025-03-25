@@ -109,27 +109,6 @@ def get_tbt_path(
     suffix = get_file_suffix(beam, nturns, coupling_knob, tunes) + f"_{index}"
     return DATA_DIR / f"tbt_{suffix}.sdds"
 
-
-def get_tbt_name(beam: int, sdds: bool = True) -> str:
-    """
-    Return the TBT filename for the given beam.
-
-    Parameters
-    ----------
-    beam : int
-        Beam number.
-    sdds : bool, optional
-        If True, use "sdds" extension, otherwise "tfs.bz2".
-
-    Returns
-    -------
-    str
-        TBT filename.
-    """
-    ext = "sdds" if sdds else "tfs.bz2"
-    return f"tbt_data_b{beam}.{ext}"
-
-
 def run_tracking(beam: int, 
                  nturns: int, 
                  model_dir: Path,
