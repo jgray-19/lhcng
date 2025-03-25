@@ -45,9 +45,9 @@ def get_folder_suffix(
         Suffix in the format "b<beam>_<nturns>t_c<coupling>_t<tune1>_<tune2>".
     """
     assert beam in [1, 2], "Beam must be 1 or 2"
-    coupling = "_"
+    coupling = ""
     if coupling_knob is not False:
-        coupling += f"c{coupling_knob}"
+        coupling = f"_c{coupling_knob}"
 
     tunes = f"t{tunes[0]}_{tunes[1]}"
     return f"b{beam}_{coupling}_{tunes}"
@@ -117,7 +117,7 @@ def create_model_dir(
     **kwargs
         Additional keyword arguments to pass to the omc3.create_instance_and_model function.
     """
-    model_dir = get_model_dir(beam)
+    model_dir = get_model_dir(beam, coupling_knob, nat_tunes)
 
     if isinstance(modifiers, (Path, str)):
         modifiers = [modifiers]
@@ -147,13 +147,14 @@ def create_model_dir(
 
     # Generate the MAD-X sequence and update with MAD-NG
     make_madx_seq(beam, model_dir, lines, coupling_knob)
-    update_model_with_ng(beam)
+    update_model_with_ng(beam, tunes=nat_tunes)
 
     # Generate beam4 sequence for tracking if beam 2
     if beam == 2:
         make_madx_seq(beam, model_dir, lines, coupling_knob, beam4=True)
 
     ModelCompressor.compress_model_folder(model_dir)
+
 
 def make_madx_seq(
     beam: int,
@@ -182,13 +183,12 @@ def make_madx_seq(
                     )
             if "coupling_knob" in line:
                 print(f"Setting coupling knob to {coupling_knob}")
-                print(line)
                 madx.input(line)
                 if coupling_knob is not False:
                     madx.input(f"cmrs.b{beam} = {coupling_knob};")
                 break  # The coupling knob is the last line to be read
-
-            madx.input(line)
+            if "match_tunes" not in line:
+                madx.input(line)
         madx.input(
             f"""
 set, format= "-.16e";
@@ -212,7 +212,7 @@ MADX.lhcb{beam}:  select(observed, {{pattern="BPM"}})
     """)
 
 
-def update_model_with_ng(beam: int) -> None:
+def update_model_with_ng(beam: int, tunes: list[float] = [0.28, 0.31]) -> None:
     """
     Update the accelerator model with MAD-NG and perform tune matching.
 
@@ -222,7 +222,7 @@ def update_model_with_ng(beam: int) -> None:
     model_dir = get_model_dir(beam)
     with MAD() as mad:
         seq_dir = -1 if beam == 2 else 1
-        start_madng(mad, beam, sequence_direction=seq_dir)
+        start_madng(mad, beam, tunes=tunes, sequence_direction=seq_dir)
         mad.send(f"""
 -- Set the twiss table information needed for the model update
 hnams = py:recv()
@@ -268,7 +268,13 @@ py:send("write complete")
     export_tfs_to_madx(model_dir / "twiss.dat")
 
 
-def start_madng(mad: MAD, beam: int, *, sequence_direction: int = 1) -> None:
+def start_madng(
+    mad: MAD,
+    beam: int,
+    *,
+    tunes: list[float] = [0.28, 0.31],
+    sequence_direction: int = 1,
+) -> None:
     """
     Initialise the accelerator model within MAD-NG.
 
@@ -287,17 +293,20 @@ print("Initialising model with beam:", {beam}, "direction:", MADX.lhcb{beam}.dir
     """)
     if sequence_direction == 1 and beam == 1:
         mad.send('MADX.lhcb1:cycle("MSIA.EXIT.B1")')
-    match_tunes(mad, beam)
+    match_tunes(mad, beam, tunes)
 
 
 def _print_tunes(mad: MAD, beam: int, sdir: int, label: str) -> None:
     mad.send(f"""
 local tbl = twiss {{sequence=MADX.lhcb{beam}, mapdef=4, dir={sdir}}};
-print("{label} tunes: ", tbl.q1, tbl.q2);
+py:send({{tbl.q1, tbl.q2}})
     """)
+    q1, q2 = mad.receive()
+    print(f"{label} tunes: ", q1, q2)
+    return q1, q2
 
 
-def match_tunes(mad: MAD, beam: int) -> None:
+def match_tunes(mad: MAD, beam: int, tunes: list[float] = [0.28, 0.31]) -> None:
     """
     Match the tunes of the model to the desired values using MAD-NG.
 
@@ -305,7 +314,11 @@ def match_tunes(mad: MAD, beam: int) -> None:
     uses a matching command to adjust the optics accordingly.
     """
     sdir = 1 if beam == 1 else -1
-    _print_tunes(mad, beam, sdir, "Initial")
+    q1, q2 = _print_tunes(mad, beam, sdir, "Initial")
+    print(tunes, q1, q2)
+    if abs(tunes[0] - q1) < 1e-6 and abs(tunes[1] - q2) < 1e-6:
+        print("Tunes already matched, skipping matching.")
+        return
     mad.send(f"""
 match {{
   command := twiss {{sequence=MADX.lhcb{beam}, mapdef=4, dir={sdir}}},
@@ -315,14 +328,10 @@ match {{
     {{ var = 'MADX.dqy_b{beam}_op', name='dQy.b{beam}_op' }},
   }},
   equalities = {{
-    {{ expr = \\t -> math.abs(t.q1)-62.28, name='q1' }},
-    {{ expr = \\t -> math.abs(t.q2)-60.31, name='q2' }},
+    {{ expr = \\t -> math.abs(t.q1)-(62+{tunes[0]}), name='q1' }},
+    {{ expr = \\t -> math.abs(t.q2)-(60+{tunes[1]}), name='q2' }},
   }},
   objective = {{ fmin=1e-7 }},
 }};
-py:send("match complete");
     """)
     _print_tunes(mad, beam, sdir, "Final")
-    response = mad.receive()
-    if response != "match complete":
-        raise RuntimeError("Error in matching tunes: " + str(response))

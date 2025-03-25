@@ -130,7 +130,11 @@ def get_tbt_name(beam: int, sdds: bool = True) -> str:
     return f"tbt_data_b{beam}.{ext}"
 
 
-def run_tracking(beam: int, nturns: int, kick_amp: float = 1e-3) -> tfs.TfsDataFrame:
+def run_tracking(beam: int, 
+                 nturns: int, 
+                 tunes: list[float] = [0.28, 0.31],
+                 kick_amp: float = 1e-3
+                 ) -> tfs.TfsDataFrame:
     """
     Run a tracking simulation using MAD-NG for a given beam over a specified number of turns.
 
@@ -144,6 +148,8 @@ def run_tracking(beam: int, nturns: int, kick_amp: float = 1e-3) -> tfs.TfsDataF
         The beam number (1 or 2).
     nturns : int
         Number of turns to simulate.
+    tunes : list[float], optional
+        Natural tunes for the beam (default is [0.28, 0.31]).
     kick_amp : float, optional
         Kick amplitude to apply to the beam (default is 1e-3).
 
@@ -155,7 +161,7 @@ def run_tracking(beam: int, nturns: int, kick_amp: float = 1e-3) -> tfs.TfsDataF
     """
     with MAD() as mad:
         # Initialize the model in MAD‐NG.
-        start_madng(mad, beam)
+        start_madng(mad, beam, tunes=tunes)
 
         # Run the tracking simulation. The tracking command in MAD‐NG uses the "track" command.
         mad.send(f"""
