@@ -16,7 +16,7 @@ import tfs
 from pymadng import MAD
 
 from .config import DATA_DIR
-from .model import start_madng, get_folder_suffix
+from .model import start_madng, get_folder_suffix, observe_BPMs
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ def get_file_suffix(
     nturns: int,
     coupling_knob: bool | float = False,
     tunes: list[float] = [0.28, 0.31],
+    kick_amp: float = 1e-3,
 ) -> str:
     """
     Return a file suffix based on the beam number and number of turns.
@@ -40,14 +41,16 @@ def get_file_suffix(
         Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
     tunes : list[float], optional
         Natural tunes (default is [0.28, 0.31]).
+    kick_amp : float, optional
+        Kick amplitude (default is 1e-3).
 
     Returns
     -------
     str
-        Suffix in the format "b<beam>_c<coupling>_t<tune1>_<tune2>_<nturns>t".
+        Suffix in the format "b<beam>_c<coupling>_t<tune1>_<tune2>_k<kick_amp>_t<nturns>k<kick_amp>".
     """
     assert beam in [1, 2], "Beam must be 1 or 2"
-    return get_folder_suffix(beam, coupling_knob, tunes) + f"_{nturns}t"
+    return get_folder_suffix(beam, coupling_knob, tunes) + f"_t{nturns}_k{kick_amp}"
 
 
 def get_tfs_path(
@@ -55,6 +58,7 @@ def get_tfs_path(
     nturns: int,
     coupling_knob: bool | float = False,
     tunes: list[float] = [0.28, 0.31],
+    kick_amp: float = 1e-3,
 ) -> Path:
     """
     Return the path for the TFS file for given beam and number of turns.
@@ -69,13 +73,15 @@ def get_tfs_path(
         Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
     tunes : list[float], optional
         Natural tunes (default is [0.28, 0.31]).
+    kick_amp : float, optional
+        Kick amplitude (default is 1e-3).
 
     Returns
     -------
     Path
         Path to the TFS file.
     """
-    return DATA_DIR / f"{get_file_suffix(beam, nturns, coupling_knob, tunes)}.tfs.bz2"
+    return DATA_DIR / f"{get_file_suffix(beam, nturns, coupling_knob, tunes, kick_amp)}.tfs.bz2"
 
 
 def get_tbt_path(
@@ -83,6 +89,7 @@ def get_tbt_path(
     nturns: int,
     coupling_knob: bool | float = False,
     tunes: list[float] = [0.28, 0.31],
+    kick_amp: float = 1e-3,
     index: int | str = 0,
 ) -> Path:
     """
@@ -106,7 +113,7 @@ def get_tbt_path(
     Path
         Path to the TBT file.
     """
-    suffix = get_file_suffix(beam, nturns, coupling_knob, tunes) + f"_{index}"
+    suffix = get_file_suffix(beam, nturns, coupling_knob, tunes, kick_amp) + f"_{index}"
     return DATA_DIR / f"tbt_{suffix}.sdds"
 
 def run_tracking(beam: int, 
@@ -142,6 +149,7 @@ def run_tracking(beam: int,
     with MAD() as mad:
         # Initialize the model in MAD‐NG.
         start_madng(mad, beam, model_dir, tunes=tunes)
+        observe_BPMs(mad, beam)
 
         # Run the tracking simulation. The tracking command in MAD‐NG uses the "track" command.
         mad.send(f"""
@@ -160,7 +168,8 @@ local X0 = {{x = kick_amp * sqrt_betx, y = -kick_amp * sqrt_bety, px = 0, py = 0
 print("Running tracking for beam {beam} with X0:", X0.x, X0.y);
 
 local t0 = os.clock();
-mtbl = track {{sequence = MADX.lhcb{beam}, nturn = {nturns}, X0 = X0, info=3}};
+
+mtbl = track {{sequence = MADX.lhcb{beam}, nturn = {nturns}, X0 = X0}};
 print("Tracking runtime:", os.clock() - t0);
         """).send(kick_amp)
 

@@ -26,6 +26,7 @@ def get_folder_suffix(
     beam: int,
     coupling_knob: bool | float = False,
     tunes: list[float] = [0.28, 0.31],
+    kick_amp: float = 1e-3,
 ) -> str:
     """
     Return a file suffix based on the beam number and number of turns.
@@ -54,7 +55,7 @@ def get_folder_suffix(
 
 
 def get_model_dir(
-    beam: int, coupling_knob: bool | float = False, tunes: list[float] = [0.28, 0.31]
+    beam: int, coupling_knob: bool | float = False, tunes: list[float] = [0.28, 0.31], kick_amp: float = 1e-3
 ) -> Path:
     """
     Return the model directory for the given beam.
@@ -67,9 +68,16 @@ def get_model_dir(
         Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
     tunes : list[float], optional
         Natural tunes (default is [0.28, 0.31]).
+    kick_amp : float, optional
+        Kick amplitude (default is 1e-3).
+    
+    Returns
+    -------
+    Path
+        Path to the model directory.
     """
     assert beam in [1, 2], "Beam must be 1 or 2"
-    model_dir = CURRENT_DIR / ("model_" + get_folder_suffix(beam, coupling_knob, tunes))
+    model_dir = CURRENT_DIR / ("model_" + get_folder_suffix(beam, coupling_knob, tunes, kick_amp))
     model_dir.mkdir(exist_ok=True)
     return model_dir
 
