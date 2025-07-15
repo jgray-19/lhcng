@@ -16,7 +16,7 @@ import tfs
 from pymadng import MAD
 
 from .config import DATA_DIR
-from .model import start_madng, get_folder_suffix, observe_BPMs
+from .model import start_madng, get_folder_suffix, observe_BPMs, match_tunes
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,10 @@ def get_tfs_path(
     Path
         Path to the TFS file.
     """
-    return DATA_DIR / f"{get_file_suffix(beam, nturns, coupling_knob, tunes, kick_amp)}.tfs.bz2"
+    return (
+        DATA_DIR
+        / f"{get_file_suffix(beam, nturns, coupling_knob, tunes, kick_amp)}.tfs.bz2"
+    )
 
 
 def get_tbt_path(
@@ -116,12 +119,41 @@ def get_tbt_path(
     suffix = get_file_suffix(beam, nturns, coupling_knob, tunes, kick_amp) + f"_{index}"
     return DATA_DIR / f"tbt_{suffix}.sdds"
 
-def run_tracking(beam: int, 
-                 nturns: int, 
-                 model_dir: Path,
-                 tunes: list[float] = [0.28, 0.31],
-                 kick_amp: float = 1e-3
-                 ) -> tfs.TfsDataFrame:
+
+def correct_orbit(mad: MAD, beam: int, tunes: list[float], deltap: str | float = "nil") -> None:
+    """
+    Correct the orbit for a given beam using MAD‐NG.
+
+    Parameters
+    ----------
+    mad : MAD
+        The MAD instance.
+    beam : int
+        The beam number (1 or 2).
+    tunes : list[float]
+        List of tunes for the beam.
+    deltap : str | float, optional
+        Delta p value (default is "nil").
+    """
+    mad.send(f"""
+local deltap = {deltap};
+local tws = twiss {{sequence = MADX.lhcb{beam}, deltap = deltap}};
+local correct in MAD
+correct {{sequence = MADX.lhcb{beam}, model=tws, method="svd", info=3}}
+""")
+    logger.info(f"Orbit correction completed for beam {beam} with deltap = {deltap}.")
+    match_tunes(mad, beam, tunes, deltap=deltap)
+    logger.info(f"Tune matching completed for beam {beam} with tunes = {tunes}.")
+
+
+def run_tracking(
+    beam: int,
+    nturns: int,
+    model_dir: Path,
+    tunes: list[float] = [0.28, 0.31],
+    kick_amp: float = 1e-3,
+    deltap="nil",
+) -> tfs.TfsDataFrame:
     """
     Run a tracking simulation using MAD-NG for a given beam over a specified number of turns.
 
@@ -150,12 +182,14 @@ def run_tracking(beam: int,
         # Initialize the model in MAD‐NG.
         start_madng(mad, beam, model_dir, tunes=tunes)
         observe_BPMs(mad, beam)
+        if deltap != "nil":
+            correct_orbit(mad, beam, tunes, deltap=deltap)
 
         # Run the tracking simulation. The tracking command in MAD‐NG uses the "track" command.
         mad.send(f"""
 local kick_amp = py:recv();
 
-local tws = twiss {{sequence = MADX.lhcb{beam}}}
+local tws = twiss {{sequence = MADX.lhcb{beam}, deltap = {deltap}}}
 
 local betx = tws["beta11"][1];
 local bety = tws["beta22"][1];
@@ -169,7 +203,7 @@ print("Running tracking for beam {beam} with X0:", X0.x, X0.y);
 
 local t0 = os.clock();
 
-mtbl = track {{sequence = MADX.lhcb{beam}, nturn = {nturns}, X0 = X0}};
+mtbl = track {{sequence = MADX.lhcb{beam}, nturn = {nturns}, X0 = X0, deltap = {deltap}}};
 print("Tracking runtime:", os.clock() - t0);
         """).send(kick_amp)
 
