@@ -134,7 +134,8 @@ def create_model_dir(
 
     create_instance_and_model(
         accel="lhc",
-        fetch="afs",
+        fetch="path",
+        path = ACC_MODELS,
         # type=optics_type,
         beam=beam,
         year=year,

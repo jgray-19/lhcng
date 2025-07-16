@@ -16,7 +16,7 @@ import tfs
 from pymadng import MAD
 
 from .config import DATA_DIR
-from .model import start_madng, get_folder_suffix, observe_BPMs, match_tunes
+from .model import get_folder_suffix, match_tunes, observe_BPMs, start_madng
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def get_file_suffix(
     Returns
     -------
     str
-        Suffix in the format "b<beam>_c<coupling>_t<tune1>_<tune2>_k<kick_amp>_t<nturns>k<kick_amp>".
+        Suffix in the format "b<beam>_c<coupling>_t<tune1>_<tune2>_t<nturns>_k<kick_amp>".
     """
     assert beam in [1, 2], "Beam must be 1 or 2"
     return get_folder_suffix(beam, coupling_knob, tunes) + f"_t{nturns}_k{kick_amp}"
@@ -120,7 +120,9 @@ def get_tbt_path(
     return DATA_DIR / f"tbt_{suffix}.sdds"
 
 
-def correct_orbit(mad: MAD, beam: int, tunes: list[float], deltap: str | float = "nil") -> None:
+def correct_orbit(
+    mad: MAD, beam: int, tunes: list[float], deltap: str | float = "nil"
+) -> None:
     """
     Correct the orbit for a given beam using MAD‐NG.
 
@@ -198,7 +200,7 @@ local sqrt_betx = math.sqrt(betx);
 local sqrt_bety = math.sqrt(bety);
 
 print("Found beta functions: betx =", betx, "bety =", bety, "at", tws:name_of(1));
-local X0 = {{x = kick_amp * sqrt_betx, y = -kick_amp * sqrt_bety, px = 0, py = 0, t = 0, pt = 0}};
+local X0 = {{x = kick_amp * sqrt_betx, y = kick_amp * sqrt_bety, px = 0, py = 0, t = 0, pt = 0}};
 print("Running tracking for beam {beam} with X0:", X0.x, X0.y);
 
 local t0 = os.clock();

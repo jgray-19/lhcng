@@ -27,8 +27,8 @@ DATA_DIR.mkdir(exist_ok=True)
 PLOT_DIR.mkdir(exist_ok=True)
 
 # If the accelerator models directory does not exist, create a symbolic link
-if not ACC_MODELS.exists():
-    os.system(f"ln -s /afs/cern.ch/eng/acc-models/lhc/2024/ {ACC_MODELS}")
+# if not ACC_MODELS.exists():
+#     os.system(f"ln -s /afs/cern.ch/eng/acc-models/lhc/2024/ {ACC_MODELS}")
 
 # RDT Definitions for the LHC (MAD-NG)
 # Normal sextupole RDTs
