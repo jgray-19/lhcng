@@ -2,7 +2,7 @@
 tracking.py
 ===========
 
-This module provides functions to run tracking simulations for the LHC using MAD‐NG.
+This module provides functions to run tracking simulations using MAD‐NG.
 It includes routines to:
     - Return file paths for TFS and TBT files.
     - Run a tracking simulation over a specified number of turns.

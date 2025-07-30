@@ -2,8 +2,8 @@
 optics.py
 =========
 
-This module contains functions for performing optics analysis for the LHC
-using MAD-NG. It provides routines to:
+This module contains functions for performing optics analysis for accelerators
+such as the LHC using MAD-NG. It provides routines to:
     - Extract RDTs from a Turn-by-Turn (TBT) file.
     - Run Harpy frequency analysis on the TBT data.
 
@@ -17,7 +17,7 @@ from pathlib import Path
 import tfs
 from omc3.hole_in_one import hole_in_one_entrypoint
 
-from .config import ALL_RDTS, ANALYSIS_DIR, DATA_DIR, FREQ_OUT_DIR
+from .config import ACCEL, ALL_RDTS, ANALYSIS_DIR, DATA_DIR, FREQ_OUT_DIR
 from .model import get_model_dir
 from .model_compressor import ModelCompressor
 from .tfs_utils import filter_out_BPM_near_IPs
@@ -128,27 +128,18 @@ def get_rdts_from_optics_analysis(
     output_dir: Path = None,
 ) -> dict[str, tfs.TfsDataFrame]:
     """
-    Run the optics analysis to extract RDTs for the given beam using a TBT file.
-
-    This function will:
-      - Determine the output directory based on the TBT file name.
-      - Construct file paths for each RDT.
-      - Invoke the optics analysis via the hole_in_one entrypoint.
-      - Read the generated TFS files, filter them, and return them in a dictionary.
-
-    Parameters
-    ----------
-    beam : int
-        Beam number (1 or 2).
-    tbt_path : Path
-        Path to the TBT file.
-    output_dir : Path, optional
-        Directory to store output files. If not provided, it is created based on tbt_path.
-
-    Returns
-    -------
-    dict[str, tfs.TfsDataFrame]
-        Dictionary mapping each RDT to its corresponding TFS DataFrame.
+    Performs optics analysis to extract Resonance Driving Terms (RDTs) from a Turn-by-Turn (TBT) file for a specified beam.
+    
+    Determines the output directory, constructs file paths for each RDT, runs the optics analysis using the provided model, and reads the resulting TFS files. The resulting DataFrames are filtered to exclude BPMs near interaction points.
+    
+    Parameters:
+        beam (int): The beam number (typically 1 or 2).
+        tbt_path (Path): Path to the TBT data file.
+        model_dir (Path): Directory containing the optics model.
+        output_dir (Path, optional): Directory for analysis output. If not provided, a directory is created based on the TBT filename.
+    
+    Returns:
+        dict[str, tfs.TfsDataFrame]: Mapping of RDT names to their filtered TFS DataFrames.
     """
     rdts = list(ALL_RDTS)  # Use the combined RDT list from config.
     # Determine if only coupling analysis is needed.
@@ -166,7 +157,7 @@ def get_rdts_from_optics_analysis(
             files=[FREQ_OUT_DIR / tbt_path.name],
             outputdir=output_dir,
             optics=True,
-            accel="lhc",
+            accel=ACCEL,
             beam=beam,
             model_dir=get_model_dir(beam),
             only_coupling=only_coupling,
@@ -195,20 +186,16 @@ def run_harpy(
     clean: bool = False,
 ) -> None:
     """
-    Run Harpy frequency analysis on the Turn-by-Turn (TBT) file for the given beam.
-
-    This function constructs the TBT file path and then calls the OMC3 Harpy entrypoint
-    to generate frequency analysis outputs. Optionally, it can use SVD cleaning to remove
-    noise from the data.
-
-    Parameters
-    ----------
-    beam : int
-        The beam number (1 or 2).
-    linfile_dir : Path, optional
-        Directory containing the linear output files. Defaults to FREQ_OUT_DIR.
-    clean : bool, optional
-        If True, perform SVD cleaning on the data (default is False).
+    Runs Harpy frequency analysis on Turn-by-Turn (TBT) data for a specified beam.
+    
+    Performs frequency analysis using the Harpy tool, generating linear optics and spectral output files. Optionally applies SVD cleaning to the data.
+    
+    Parameters:
+    	beam (int): The beam number (1 or 2) for which to run the analysis.
+    	tunes (list[float], optional): List of tune values to use for the analysis. Defaults to [0.28, 0.31, 0.0].
+    	natdeltas (list[float], optional): List of natural detuning values. Defaults to [0.0, -0.0, 0.0].
+    	linfile_dir (Path, optional): Directory to store the output files. If not provided, uses FREQ_OUT_DIR.
+    	clean (bool, optional): If True, applies SVD cleaning to the data before analysis.
     """
     from omc3.hole_in_one import hole_in_one_entrypoint
 
@@ -225,6 +212,7 @@ def run_harpy(
             outputdir=linfile_dir,
             to_write=["lin", "spectra"],
             opposite_direction=(beam == 2),
+            accel=ACCEL,
             tunes=tunes,
             natdeltas=natdeltas,
             clean=clean,
