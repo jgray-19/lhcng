@@ -96,33 +96,22 @@ def create_model_dir(
     **kwargs,
 ) -> Path:
     """
-    Create and initialise the accelerator model for the given beam.
-
-    This routine generates the MAD-X sequence file, updates the model with MAD-NG,
-    and generates the beam4 sequence for tracking if beam 2.
-
-    Parameters
-    ----------
-    beam : int
-        Beam number (1 or 2).
-    coupling_knob : bool | float, optional
-        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
-    optics_type : str, optional
-        Optics type (default is "nominal").
-    year : str, optional
-        Year of the optics (default is "2024").
-    driven_excitation : str, optional
-        Driven excitation type (default is "acd").
-    energy : float, optional
-        Beam energy in GeV (default is 6800.0 GeV).
-    nat_tunes : list[float], optional
-        Natural tunes (default is [0.28, 0.31]).
-    drv_tunes : list[float] | None, optional
-        Driven tunes (default is None, i.e. use natural tunes).
-    modifiers : Path | list[Path], optional
-        Path to the MAD-X modifiers file or list of modifiers (default is the nominal optics file).
-    **kwargs
-        Additional keyword arguments to pass to the omc3.create_instance_and_model function.
+    Create and initialize an accelerator model directory for the specified beam.
+    
+    This function generates the model files using MAD-X and MAD-NG, including the sequence file and tune-matched optics. For beam 2, it also generates a beam4 sequence for tracking. The resulting model directory is compressed and returned.
+    
+    Parameters:
+        beam (int): Beam number (1 or 2).
+        coupling_knob (bool | float, optional): Value for the coupling knob; if False, no coupling is applied.
+        year (str, optional): Optics year (default is "2024").
+        driven_excitation (str, optional): Driven excitation type (default is "acd").
+        energy (float, optional): Beam energy in GeV (default is 6800.0).
+        nat_tunes (list[float], optional): Natural tunes (default is [0.28, 0.31]).
+        drv_tunes (list[float] | None, optional): Driven tunes; if None, uses natural tunes.
+        modifiers (Path | list[Path], optional): Path(s) to MAD-X modifier files.
+    
+    Returns:
+        Path: Path to the created and compressed model directory.
     """
     model_dir = get_model_dir(beam, coupling_knob, nat_tunes)
 
@@ -169,22 +158,9 @@ def model_to_ng(
     out_dir: Path | None = None,
 ) -> None:
     """
-    Convert the model in the given directory to MAD-NG format.
-
-    Parameters
-    ----------
-    model_dir : Path
-        Path to the model directory containing the MAD-X sequence file.
-    beam : int, optional
-        Beam number (1 or 2) for which the model is being converted (default is 1).
-    coupling_knob : bool | float, optional
-        Set the value of the cmrs.b<beam> knob for coupling (default is False, i.e. no coupling).
-    tunes : list[float], optional
-        Natural tunes (default is [0.28, 0.31]).
-    beam4 : bool, optional
-        If True, generate the sequence for beam 4 (default is False).
-    out_dir : Path | None, optional
-        Output directory for the converted model. If None, uses the model_dir (default is None).
+    Convert an accelerator model directory to MAD-NG format, updating sequences and twiss tables as needed.
+    
+    If an output directory is specified and differs from the input, the model directory is copied and a symbolic link to the accelerator models is created. The function generates the MAD-X sequence file, updates the model using MAD-NG, optionally creates a beam4 sequence for tracking, and compresses the resulting model directory.
     """
 
     # Copy the model directory to the output directory
@@ -217,9 +193,9 @@ def make_madx_seq(
     beam4: bool = False,
 ) -> None:
     """
-    Generate the MAD-X sequence file for the given beam.
-
-    If beam4 is True, adjust the sequence for beam 4 settings (used for tracking).
+    Generate the MAD-X sequence file for the specified beam and model directory.
+    
+    If `beam4` is True, modifies the sequence for beam 4 tracking (only valid for beam 2). Sets the coupling knob value if specified. The resulting sequence is saved as `lhcb<beam>_saved.seq` in the model directory.
     """
     madx_file = model_dir / MADX_FILENAME
     with open(madx_file, "r") as f:
