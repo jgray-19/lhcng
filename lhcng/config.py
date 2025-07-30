@@ -2,13 +2,18 @@
 config.py
 =========
 
-This module defines configuration settings and constants for the lhcng package,
-including directory paths, accelerator model settings, and RDT definitions for
-MAD-NG operations with the LHC.
+This module defines configuration settings and constants for the ``lhcng``
+package, including directory paths, accelerator model settings, and RDT
+definitions for MAD-NG operations. By default it assumes the LHC layout but the
+``ACCEL`` environment variable can be used to point to other machines.
 """
 
 import os
 from pathlib import Path
+
+# Accelerator name (default is "lhc"). This can be overridden using the
+# ``ACCEL`` environment variable to adapt the package to a different machine.
+ACCEL = os.environ.get("ACCEL", "lhc")
 
 # BASE DIRECTORY now set to the directory of the importing file
 CURRENT_DIR = Path(os.getcwd()).resolve()
@@ -17,7 +22,9 @@ CURRENT_DIR = Path(os.getcwd()).resolve()
 ANALYSIS_DIR = CURRENT_DIR / "analysis"
 FREQ_OUT_DIR = ANALYSIS_DIR / "lin_files"
 DATA_DIR = CURRENT_DIR / "data"
-ACC_MODELS = CURRENT_DIR / "acc-models-lhc"
+# Directory containing accelerator models. The directory name is
+# constructed from the chosen accelerator.
+ACC_MODELS = CURRENT_DIR / f"acc-models-{ACCEL}"
 PLOT_DIR = CURRENT_DIR / "plots"
 
 # Ensure that output directories exist
@@ -26,9 +33,13 @@ FREQ_OUT_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
 PLOT_DIR.mkdir(exist_ok=True)
 
-# If the accelerator models directory does not exist, create a symbolic link
+# If the accelerator models directory does not exist you may want to create a
+# symbolic link to a central repository. An example for the LHC would be:
+#
 # if not ACC_MODELS.exists():
-#     os.system(f"ln -s /afs/cern.ch/eng/acc-models/lhc/2024/ {ACC_MODELS}")
+#     os.system(
+#         f"ln -s /afs/cern.ch/eng/acc-models/{ACCEL}/2024/ {ACC_MODELS}"
+#     )
 
 # RDT Definitions for the LHC (MAD-NG)
 # Normal sextupole RDTs

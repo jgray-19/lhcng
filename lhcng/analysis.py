@@ -2,8 +2,8 @@
 optics.py
 =========
 
-This module contains functions for performing optics analysis for the LHC
-using MAD-NG. It provides routines to:
+This module contains functions for performing optics analysis for accelerators
+such as the LHC using MAD-NG. It provides routines to:
     - Extract RDTs from a Turn-by-Turn (TBT) file.
     - Run Harpy frequency analysis on the TBT data.
 
@@ -17,7 +17,7 @@ from pathlib import Path
 import tfs
 from omc3.hole_in_one import hole_in_one_entrypoint
 
-from .config import ALL_RDTS, ANALYSIS_DIR, DATA_DIR, FREQ_OUT_DIR
+from .config import ACCEL, ALL_RDTS, ANALYSIS_DIR, DATA_DIR, FREQ_OUT_DIR
 from .model import get_model_dir
 from .model_compressor import ModelCompressor
 from .tfs_utils import filter_out_BPM_near_IPs
@@ -166,7 +166,7 @@ def get_rdts_from_optics_analysis(
             files=[FREQ_OUT_DIR / tbt_path.name],
             outputdir=output_dir,
             optics=True,
-            accel="lhc",
+            accel=ACCEL,
             beam=beam,
             model_dir=get_model_dir(beam),
             only_coupling=only_coupling,
@@ -225,6 +225,7 @@ def run_harpy(
             outputdir=linfile_dir,
             to_write=["lin", "spectra"],
             opposite_direction=(beam == 2),
+            accel=ACCEL,
             tunes=tunes,
             natdeltas=natdeltas,
             clean=clean,

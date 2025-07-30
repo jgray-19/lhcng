@@ -2,9 +2,9 @@
 model.py
 ========
 
-This module provides functions for creating and manipulating the LHC accelerator model
-using MAD-NG. It includes routines to create the model directory, generate the MAD-X sequence,
-initialise the model within MAD-NG, and perform tune matching.
+This module provides functions for creating and manipulating accelerator models
+with MAD-NG. It includes routines to create the model directory, generate the
+MAD-X sequence, initialise the model within MAD-NG, and perform tune matching.
 """
 
 import os
@@ -15,7 +15,7 @@ from cpymad.madx import Madx
 from omc3.model_creator import create_instance_and_model
 from pymadng import MAD
 
-from .config import ACC_MODELS, CURRENT_DIR
+from .config import ACCEL, ACC_MODELS, CURRENT_DIR
 from .model_compressor import ModelCompressor
 from .model_constants import MODEL_COLUMNS, MODEL_HEADER, MODEL_STRENGTHS
 from .tfs_utils import export_tfs_to_madx
@@ -133,7 +133,7 @@ def create_model_dir(
         drv_tunes = nat_tunes
 
     create_instance_and_model(
-        accel="lhc",
+        accel=ACCEL,
         fetch="path",
         path = ACC_MODELS,
         # type=optics_type,
@@ -189,9 +189,16 @@ def model_to_ng(
 
     # Copy the model directory to the output directory
     if out_dir and out_dir != model_dir:
-        shutil.copytree(model_dir, out_dir, dirs_exist_ok=True,  ignore=shutil.ignore_patterns("acc-models-lhc"))
+        shutil.copytree(
+            model_dir,
+            out_dir,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(f"acc-models-{ACCEL}")
+        )
         model_dir = out_dir
-        os.system(f"ln -s /afs/cern.ch/eng/acc-models/lhc/{year}/ {model_dir/'acc-models-lhc'}")
+        os.system(
+            f"ln -s /afs/cern.ch/eng/acc-models/{ACCEL}/{year}/ {model_dir / f'acc-models-{ACCEL}'}"
+        )
     
     # First create the MAD-X sequence file
     make_madx_seq(beam, model_dir, coupling_knob, beam4)
@@ -230,9 +237,10 @@ def make_madx_seq(
                         "beam, sequence=LHCB2, particle=proton, energy=450, kbunch=1, npart=1.15E11, bv=1;"
                     )
                     continue
-                elif "acc-models-lhc/lhc.seq" in line:
+                elif f"acc-models-{ACCEL}/lhc.seq" in line:
                     line = line.replace(
-                        "acc-models-lhc/lhc.seq", "acc-models-lhc/lhcb4.seq"
+                        f"acc-models-{ACCEL}/lhc.seq",
+                        f"acc-models-{ACCEL}/lhcb4.seq",
                     )
             if "coupling_knob" in line:
                 print(f"Setting coupling knob to {coupling_knob}")
