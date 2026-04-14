@@ -8,8 +8,10 @@ from omc3.model.constants import (
     TWISS_ELEMENTS_DAT,
 )
 
+
 class ModelCompressor:
     """Context manager for compressing and decompressing model TFS files."""
+
     def __init__(self, model_dir):
         self.model_dir = Path(model_dir)
         # Build file paths
@@ -23,9 +25,12 @@ class ModelCompressor:
             self.model_files.append(acd_path)
         if adt_path.exists():
             self.model_files.append(adt_path)
+        self.do_not_compress = False
 
     def compress_file(self, uncompressed_path: Path) -> Path:
         """Compress a TFS file and remove the uncompressed file."""
+        if self.do_not_compress:
+            return uncompressed_path
         compressed_path = uncompressed_path.with_suffix(".tfs.bz2")
         df = tfs.read(uncompressed_path)
         tfs.write(compressed_path, df)
@@ -57,7 +62,17 @@ class ModelCompressor:
         mc.compress_model()
 
     def __enter__(self):
-        self.decompress_model()
+        compressed_files = [m.with_suffix(".tfs.bz2") for m in self.model_files]
+        all_bz2_exist = all(f.exists() for f in compressed_files)
+        if all_bz2_exist:
+            self.decompress_model()
+        else:
+            missing_models = [str(m) for m in self.model_files if not m.exists()]
+            if missing_models:
+                raise FileNotFoundError(
+                    f"Required model file(s) do not exist: {', '.join(missing_models)}"
+                )
+            self.do_not_compress = True
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

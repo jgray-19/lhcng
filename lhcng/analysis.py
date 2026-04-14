@@ -11,14 +11,16 @@ The analysis is based on TFS file handling via the tfs package and the
 omc3.hole_in_one entrypoint.
 """
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 import tfs
 from omc3.hole_in_one import hole_in_one_entrypoint
 
-from .config import ALL_RDTS, ANALYSIS_DIR, DATA_DIR, FREQ_OUT_DIR
-from .model import get_model_dir
+from .config import ALL_RDTS, ANALYSIS_DIR, FREQ_OUT_DIR
 from .model_compressor import ModelCompressor
 from .tfs_utils import filter_out_BPM_near_IPs
 
@@ -93,9 +95,12 @@ def get_rdt_paths(rdts: list[str], output_dir: Path) -> dict[str, Path]:
     """
     rdt_paths = {}
     for rdt in rdts:
+        if rdt.lower() in ["f1001", "f1010"]:
+            rdt_paths[rdt] = output_dir / f"{rdt}.tfs"
+            continue
         rdt_type, order_name = get_rdt_type(rdt)
         # Example folder structure: <output_dir>/<rdt_type>_<order>/<rdt>.tfs
-        rdt_paths[rdt] = output_dir / f"{rdt_type}_{order_name}" / f"{rdt}.tfs"
+        rdt_paths[rdt] = output_dir / "rdt" / f"{rdt_type}_{order_name}" / f"{rdt}.tfs"
     return rdt_paths
 
 
@@ -103,7 +108,7 @@ def get_tunes(output_dir: Path) -> list[float]:
     """
     Extract the tunes from the optics analysis file.
 
-    Assumes that the file "beta_amplitude_x.tfs" is present in the output directory
+    Assumes that the file "f1001.tfs" is present in the output directory
     and contains headers with keys "Q1" and "Q2".
 
     Parameters
@@ -116,7 +121,7 @@ def get_tunes(output_dir: Path) -> list[float]:
     list[float]
         A list containing the two tunes.
     """
-    optics_file = output_dir / "beta_amplitude_x.tfs"
+    optics_file = output_dir / "f1001.tfs"
     headers = tfs.reader.read_headers(optics_file)
     return [headers["Q1"], headers["Q2"]]
 
@@ -126,6 +131,8 @@ def get_rdts_from_optics_analysis(
     tbt_path: Path,
     model_dir: Path,
     output_dir: Path = None,
+    rdts: Sequence[str] = ALL_RDTS,
+    compensation: str = "none",
 ) -> dict[str, tfs.TfsDataFrame]:
     """
     Run the optics analysis to extract RDTs for the given beam using a TBT file.
@@ -142,15 +149,20 @@ def get_rdts_from_optics_analysis(
         Beam number (1 or 2).
     tbt_path : Path
         Path to the TBT file.
+    model_dir : Path
+        Path to the model directory.
     output_dir : Path, optional
         Directory to store output files. If not provided, it is created based on tbt_path.
+    rdts : Sequence[str], optional
+        List of RDT names to extract. Defaults to ALL_RDTS from config.
+    compensation : str, optional
+        Compensation method for the optics analysis (default is "none").
 
     Returns
     -------
     dict[str, tfs.TfsDataFrame]
         Dictionary mapping each RDT to its corresponding TFS DataFrame.
     """
-    rdts = list(ALL_RDTS)  # Use the combined RDT list from config.
     # Determine if only coupling analysis is needed.
     only_coupling = all(rdt.lower() in ["f1001", "f1010"] for rdt in rdts)
     # Define the RDT magnet order; for sextupoles use 3, adjust if needed.
@@ -163,14 +175,18 @@ def get_rdts_from_optics_analysis(
     # Run optics analysis using omc3's hole_in_one_entrypoint.
     with ModelCompressor(model_dir):
         hole_in_one_entrypoint(
-            files=[FREQ_OUT_DIR / tbt_path.name],
+            files=[
+                p.parent / p.stem
+                for p in Path(FREQ_OUT_DIR).glob(f"{tbt_path.name}*.freqsx")
+            ],
             outputdir=output_dir,
+            year="2024",
             optics=True,
             accel="lhc",
             beam=beam,
-            model_dir=get_model_dir(beam),
+            model_dir=model_dir,
             only_coupling=only_coupling,
-            compensation="none",
+            compensation=compensation,
             nonlinear=["rdt"],
             rdt_magnet_order=rdt_order,
         )
@@ -187,6 +203,7 @@ def get_rdts_from_optics_analysis(
 
 
 def run_harpy(
+    tbt_files: Path | list[Path],
     beam: int,
     model_dir: Path,
     tunes: list[float] = [0.28, 0.31, 0.0],
@@ -215,13 +232,13 @@ def run_harpy(
     if linfile_dir is None:
         linfile_dir = FREQ_OUT_DIR
 
-    # Construct the TBT file path (assuming naming convention from config).
-    tbt_file = DATA_DIR / f"tbt_data_b{beam}.sdds"
+    if isinstance(tbt_files, (Path, str)):
+        tbt_files = [tbt_files]
 
     with ModelCompressor(model_dir):
         hole_in_one_entrypoint(
             harpy=True,
-            files=[tbt_file],
+            files=tbt_files,
             outputdir=linfile_dir,
             to_write=["lin", "spectra"],
             opposite_direction=(beam == 2),
@@ -230,4 +247,3 @@ def run_harpy(
             clean=clean,
         )
         logger.info(f"Harpy analysis complete for beam {beam}.")
-
