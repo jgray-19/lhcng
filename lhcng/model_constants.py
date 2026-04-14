@@ -45,4 +45,8 @@ MODEL_COLUMNS = [
     "dpx",
     "dy",
     "dpy",
+    "r11",
+    "r12",
+    "r21",
+    "r22",
 ]

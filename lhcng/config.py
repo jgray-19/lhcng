@@ -95,10 +95,9 @@ COUPLING_RDTS = [
 
 # Combined RDTs (if you need a single list of all available RDTs)
 ALL_RDTS = (
-    NORMAL_SEXTUPOLE_RDTS
-    + SKEW_SEXTUPOLE_RDTS
-    + NORMAL_OCTUPOLE_RDTS
-    + SKEW_OCTUPOLE_RDTS
+    NORMAL_SEXTUPOLE_RDTS + SKEW_SEXTUPOLE_RDTS
+    # + NORMAL_OCTUPOLE_RDTS
+    # + SKEW_OCTUPOLE_RDTS
 )
 
 # Optionally, you can also define model-specific directories or prefixes here.
