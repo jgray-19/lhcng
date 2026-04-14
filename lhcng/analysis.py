@@ -245,5 +245,7 @@ def run_harpy(
             tunes=tunes,
             natdeltas=natdeltas,
             clean=clean,
+            turn_bits=14,
+            output_bits=14,
         )
         logger.info(f"Harpy analysis complete for beam {beam}.")
