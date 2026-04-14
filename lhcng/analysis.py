@@ -225,7 +225,7 @@ def run_harpy(
     if linfile_dir is None:
         linfile_dir = FREQ_OUT_DIR
 
-    if isinstance(tbt_files, Path | str):
+    if isinstance(tbt_files, (Path, str)):
         tbt_files = [tbt_files]
 
     with ModelCompressor(model_dir):
