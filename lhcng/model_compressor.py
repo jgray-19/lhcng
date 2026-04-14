@@ -62,11 +62,16 @@ class ModelCompressor:
         mc.compress_model()
 
     def __enter__(self):
-        try:
+        compressed_files = [m.with_suffix(".tfs.bz2") for m in self.model_files]
+        all_bz2_exist = all(f.exists() for f in compressed_files)
+        if all_bz2_exist:
             self.decompress_model()
-        except FileNotFoundError:
-            for model in self.model_files:
-                assert model.exists(), f"Model file {model} does not exist."
+        else:
+            missing_models = [str(m) for m in self.model_files if not m.exists()]
+            if missing_models:
+                raise FileNotFoundError(
+                    f"Required model file(s) do not exist: {', '.join(missing_models)}"
+                )
             self.do_not_compress = True
         return self
 

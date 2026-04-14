@@ -14,6 +14,7 @@ omc3.hole_in_one entrypoint.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 import tfs
@@ -107,7 +108,7 @@ def get_tunes(output_dir: Path) -> list[float]:
     """
     Extract the tunes from the optics analysis file.
 
-    Assumes that the file "beta_amplitude_x.tfs" is present in the output directory
+    Assumes that the file "f1001.tfs" is present in the output directory
     and contains headers with keys "Q1" and "Q2".
 
     Parameters
@@ -130,8 +131,8 @@ def get_rdts_from_optics_analysis(
     tbt_path: Path,
     model_dir: Path,
     output_dir: Path = None,
-    rdts: list[str] = ALL_RDTS,
-    compensation="none",
+    rdts: Sequence[str] = ALL_RDTS,
+    compensation: str = "none",
 ) -> dict[str, tfs.TfsDataFrame]:
     """
     Run the optics analysis to extract RDTs for the given beam using a TBT file.
@@ -148,8 +149,14 @@ def get_rdts_from_optics_analysis(
         Beam number (1 or 2).
     tbt_path : Path
         Path to the TBT file.
+    model_dir : Path
+        Path to the model directory.
     output_dir : Path, optional
         Directory to store output files. If not provided, it is created based on tbt_path.
+    rdts : Sequence[str], optional
+        List of RDT names to extract. Defaults to ALL_RDTS from config.
+    compensation : str, optional
+        Compensation method for the optics analysis (default is "none").
 
     Returns
     -------
@@ -179,7 +186,7 @@ def get_rdts_from_optics_analysis(
             beam=beam,
             model_dir=model_dir,
             only_coupling=only_coupling,
-            compensation="none",
+            compensation=compensation,
             nonlinear=["rdt"],
             rdt_magnet_order=rdt_order,
         )
